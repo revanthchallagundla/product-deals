@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard – Product Deals Finder</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="icon" href="/assets/favicon.ico" type="image/x-icon" />
+    <style>
+      @keyframes sparkle {
+        0%,
+        100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+        50% {
+          opacity: 0.5;
+          transform: scale(1.3);
+        }
+      }
+      .sparkle {
+        position: absolute;
+        font-size: 1.25rem;
+        color: rgba(99, 102, 241, 0.8);
+        animation: sparkle 1.8s ease-in-out infinite;
+      }
+      .left-sparkle {
+        top: -0.3rem;
+        left: -0.3rem;
+      }
+      .right-sparkle {
+        top: -0.3rem;
+        right: -0.3rem;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-100 min-h-screen flex flex-col">
+    <!-- HEADER -->
+    <header class="bg-white shadow-sm">
+      <div
+        class="container mx-auto px-6 py-4 flex justify-between items-center"
+      >
+        <div class="flex items-center">
+          <i class="fas fa-tags text-indigo-600 text-2xl mr-2"></i>
+          <h1 class="text-2xl font-bold text-gray-800">Product Deals Finder</h1>
+        </div>
+        <button
+          class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition"
+        >
+          Logout
+        </button>
+      </div>
+    </header>
+
+    <!-- MAIN FLEX LAYOUT (equal-height columns) -->
+    <main
+      class="container mx-auto px-6 py-8 flex flex-col md:flex-row gap-8 flex-1"
+    >
+      <!-- LEFT COLUMN -->
+      <div class="flex-1 flex flex-col space-y-8">
+        <div class="bg-white shadow rounded-lg px-6 py-8">
+          <div class="grid grid-cols-2 gap-4 items-center">
+            <!-- LEFT: greeting + subtitle stacked -->
+            <div class="space-y-1">
+              <h2 class="text-gray-700 text-lg font-medium">
+                Hi <span class="font-semibold">Nani</span>, your savings:
+              </h2>
+              <div class="text-sm text-gray-500">Since 2024</div>
+            </div>
+
+            <!-- RIGHT: big gradient number, right-aligned -->
+            <div class="relative text-right">
+              <span
+                class="text-6xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 via-indigo-600 to-purple-600"
+              >
+                AUD 200
+              </span>
+              <!-- sparkle icons -->
+              <i class="fas fa-sparkles sparkle left-sparkle"></i>
+              <i class="fas fa-sparkles sparkle right-sparkle"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- Frequent Searches Chart (now flex-1 to match right col height) -->
+        <div class="bg-white shadow rounded-lg p-6 flex-1 flex flex-col">
+          <h3 class="text-lg font-semibold mb-4 text-gray-800">
+            Frequent Search Products
+          </h3>
+          <div class="flex-1">
+            <canvas id="freqChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN -->
+      <div class="flex-1 flex flex-col space-y-8">
+        <!-- Create List Button -->
+        <div
+          class="bg-white border-dashed border-2 border-indigo-300 rounded-lg p-8 flex items-center justify-center hover:bg-indigo-50 cursor-pointer transition"
+        >
+          <i class="fas fa-plus text-indigo-600 text-xl mr-2"></i>
+          <span class="text-indigo-600 font-medium text-lg">Create a list</span>
+        </div>
+
+        <!-- Saved Lists with edit/clear icons -->
+        <div class="bg-white shadow rounded-lg p-6 flex flex-col">
+          <h3 class="text-lg font-semibold mb-4 text-gray-800">Your Lists</h3>
+          <ul class="space-y-2 flex-1 overflow-auto">
+            <!-- example list item -->
+            <li
+              class="flex justify-between items-center p-2 bg-gray-50 rounded hover:bg-gray-100"
+            >
+              <span>Product List 1</span>
+              <div class="flex space-x-3">
+                <i
+                  class="fas fa-edit text-gray-500 hover:text-indigo-600 cursor-pointer"
+                ></i>
+                <i
+                  class="fas fa-trash-alt text-gray-500 hover:text-red-500 cursor-pointer"
+                ></i>
+              </div>
+            </li>
+            <li
+              class="flex justify-between items-center p-2 bg-gray-50 rounded hover:bg-gray-100"
+            >
+              <span>Product List 2</span>
+              <div class="flex space-x-3">
+                <i
+                  class="fas fa-edit text-gray-500 hover:text-indigo-600 cursor-pointer"
+                ></i>
+                <i
+                  class="fas fa-trash-alt text-gray-500 hover:text-red-500 cursor-pointer"
+                ></i>
+              </div>
+            </li>
+            <li
+              class="flex justify-between items-center p-2 bg-gray-50 rounded hover:bg-gray-100"
+            >
+              <span>Product List 3</span>
+              <div class="flex space-x-3">
+                <i
+                  class="fas fa-edit text-gray-500 hover:text-indigo-600 cursor-pointer"
+                ></i>
+                <i
+                  class="fas fa-trash-alt text-gray-500 hover:text-red-500 cursor-pointer"
+                ></i>
+              </div>
+            </li>
+            <li
+              class="flex justify-between items-center p-2 bg-gray-50 rounded hover:bg-gray-100"
+            >
+              <span>Product List 4</span>
+              <div class="flex space-x-3">
+                <i
+                  class="fas fa-edit text-gray-500 hover:text-indigo-600 cursor-pointer"
+                ></i>
+                <i
+                  class="fas fa-trash-alt text-gray-500 hover:text-red-500 cursor-pointer"
+                ></i>
+              </div>
+            </li>
+            <li
+              class="flex justify-between items-center p-2 bg-gray-50 rounded hover:bg-gray-100"
+            >
+              <span>Product List 5</span>
+              <div class="flex space-x-3">
+                <i
+                  class="fas fa-edit text-gray-500 hover:text-indigo-600 cursor-pointer"
+                ></i>
+                <i
+                  class="fas fa-trash-alt text-gray-500 hover:text-red-500 cursor-pointer"
+                ></i>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Tag Cloud -->
+        <div class="bg-white shadow rounded-lg p-6 flex flex-col">
+          <h3 class="text-lg font-semibold mb-4 text-gray-800">
+            Popular Searches
+          </h3>
+          <div class="flex flex-wrap gap-2">
+            <span
+              class="text-sm bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full"
+              >bread (2)</span
+            >
+            <span
+              class="text-base bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full"
+              >coconut (5)</span
+            >
+            <span
+              class="text-sm bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full"
+              >milk (3)</span
+            >
+            <span
+              class="text-sm bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full"
+              >coffee (4)</span
+            >
+            <span
+              class="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full"
+              >butter milk (1)</span
+            >
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-white border-t py-4 text-center text-sm text-gray-500">
+      © 2025 Product Deals Finder
+    </footer>
+
+    <!-- CHART.JS -->
+    <script>
+      const ctx = document.getElementById("freqChart").getContext("2d");
+
+      new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: ["bread", "coconut", "milk", "coffee", "butter milk"],
+          datasets: [
+            {
+              label: "Search count",
+              data: [2, 5, 3, 4, 1],
+              backgroundColor: "rgba(99,102,241,0.8)",
+            },
+          ],
+        },
+        options: {
+          layout: {
+            padding: { top: 24 }, // ← adds 24px above the bars
+          },
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { beginAtZero: true, ticks: { stepSize: 1 } },
+          },
+        },
+      });
+    </script>
+  </body>
+</html>
