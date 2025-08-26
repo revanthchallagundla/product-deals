@@ -87,7 +87,6 @@ PRODUCT-DEALS-APP/
 
 1. Clone the repository:
    ```
-   git clone https://github.com/nuthanm/product-deals-app.git
    cd product-deals-app
    ```
 2. Set up the backend:
@@ -155,5 +154,3 @@ POST /api/deals - Get deals for multiple products (up to 5 )
 
 **Frontend:** [Vercel](https://vercel.com/)
 
-### It's time to Gratitude
-**[Manus](https://manus.im/)** and **[Open AI - ChatGpt](https://chatgpt.com/)**
