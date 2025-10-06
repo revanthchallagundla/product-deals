@@ -2,7 +2,7 @@
 Purpose of this class : Handle product schema and model
 This module defines the schema for products in the database, including fields for name, category, and creation date.
 Dependencies : Mongoose for schema definition and model creation.
-Author : Nuthan M
+Author : Revanth
 Created Date : 2025-July-03
 */
 
