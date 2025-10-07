@@ -1,4 +1,4 @@
-/*
+/* 
 Purpose of this class : Handle frontend logic for product search and deals
 This module manages the product search functionality, including autocomplete suggestions, adding products to a list, and fetching deals.
 Dependencies : Axios for API requests, DOM manipulation for UI updates.
@@ -7,7 +7,9 @@ Created Date : 2025-July-03
 */
 
 document.addEventListener("DOMContentLoaded", () => {
-  const API_BASE = document.querySelector('meta[name="api-base"]').content;
+  const apiMeta = document.querySelector('meta[name="api-base"]');
+  const API_BASE = apiMeta?.content || "/api";
+
   const productSearch = document.getElementById("product-search");
   const addToListBtn = document.getElementById("add-to-list");
   const autocompleteEl = document.getElementById("autocomplete-results");
@@ -17,26 +19,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const getDealsBtn = document.getElementById("get-deals");
   const dealsSection = document.getElementById("deals-results");
   const dealsContainer = document.getElementById("deals-container");
-  const recentEl = document.getElementById("recent-searches");
-  const clearHistory = document.getElementById("clear-history");
   const moveTop = document.getElementById("move-to-top");
-  // const featuredDealsSection = document.getElementById("featured-deals");
-  // Import configuration constants
-  // These constants are used to define allowed sources, featured product limits.
-  // const {
-  //   ALLOWED_SOURCES,
-  //   FEATURED_LIMIT,
-  //   MAXIMUM_PRODUCTS_PERDAY_USER_ANONYMOUS,
-  //   MAXIMUM_PRODUCTS_PERDAY_USER_AUTHENTICATED,
-  // } = require("../utils/config.js").default;
 
   let productList = [];
-  const MAX_PRODUCTS = 2; // Maximum products for anonymous users
+  const MAX_PRODUCTS = 2;
   let typingTimer;
 
-  /** Renders the “chips” and UI state */
+  /* ------------------------------ UI Updates ------------------------------ */
   function updateUI() {
-    // Chips
     selectedEl.innerHTML =
       productList.length === 0
         ? emptyState.outerHTML
@@ -46,26 +36,18 @@ document.addEventListener("DOMContentLoaded", () => {
         <span class="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full inline-flex items-center mr-2">
           ${p.name}
           <button data-index="${i}" class="ml-2 text-indigo-600 hover:text-indigo-900">&times;</button>
-        </span>
-      `
+        </span>`
             )
             .join("");
 
-    // Count + button states
     productCountEl.textContent = `(${productList.length}/${MAX_PRODUCTS})`;
-    const full = productList.length >= MAX_PRODUCTS;
-    addToListBtn.disabled = full;
-    productSearch.disabled = full;
+    addToListBtn.disabled = productList.length >= MAX_PRODUCTS;
+    productSearch.disabled = productList.length >= MAX_PRODUCTS;
     getDealsBtn.disabled = productList.length === 0;
 
-    // Toggling deals and feature deals section
-    if (productList.length === 0) {
-      dealsSection.classList.add("hidden");
-      //featuredDealsSection.classList.remove("hidden");
-    }
+    if (productList.length === 0) dealsSection.classList.add("hidden");
   }
 
-  // Remove chip
   selectedEl.addEventListener("click", (e) => {
     if (e.target.tagName === "BUTTON") {
       productList.splice(+e.target.dataset.index, 1);
@@ -73,41 +55,34 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Autocomplete fetch
+  /* ------------------------------ Autocomplete ----------------------------- */
   async function fetchAuto(q) {
     try {
-      const { data } = await axios.get(
-        `${API_BASE}/autocomplete?query=${encodeURIComponent(q)}`
-      );
-      if (!data || !data.length) {
-        autocompleteEl.innerHTML = `<div class="p-3 text-gray-500 text-center">No products found</div>`;
-      } else {
-        autocompleteEl.innerHTML = data
-          .map(
-            (p, i) => `
-      <div class="px-4 py-2 text-left border-b last:border-b-0 hover:bg-gray-100 cursor-pointer text-sm text-gray-800"
-           data-name="${p.name}" data-id="${p.id || ""}">
-        ${p.name}
-      </div>
-    `
-          )
-          .join("");
-      }
+      const { data } = await axios.get(`${API_BASE}/autocomplete?query=${encodeURIComponent(q)}`);
+      autocompleteEl.innerHTML = data?.length
+        ? data
+            .map(
+              (p) => `
+        <div class="px-4 py-2 border-b last:border-b-0 hover:bg-gray-100 cursor-pointer text-sm text-gray-800"
+             data-name="${p.name}" data-id="${p.id || ""}">
+          ${p.name}
+        </div>`
+            )
+            .join("")
+        : `<div class="p-3 text-gray-500 text-center">No products found</div>`;
       autocompleteEl.classList.remove("hidden");
-    } catch {}
+    } catch (err) {
+      console.error("Autocomplete error:", err);
+    }
   }
 
   productSearch.addEventListener("input", () => {
     clearTimeout(typingTimer);
     const v = productSearch.value.trim();
-    if (v.length > 2) {
-      typingTimer = setTimeout(() => fetchAuto(v), 300);
-    } else {
-      autocompleteEl.classList.add("hidden");
-    }
+    if (v.length > 2) typingTimer = setTimeout(() => fetchAuto(v), 300);
+    else autocompleteEl.classList.add("hidden");
   });
 
-  // Pick from autocomplete
   autocompleteEl.addEventListener("click", (e) => {
     const item = e.target.closest("[data-name]");
     if (!item) return;
@@ -116,7 +91,7 @@ document.addEventListener("DOMContentLoaded", () => {
     autocompleteEl.classList.add("hidden");
   });
 
-  // Add to list
+  /* ------------------------------- Add List ------------------------------- */
   function addToList() {
     const name = productSearch.value.trim();
     if (!name) return;
@@ -124,13 +99,14 @@ document.addEventListener("DOMContentLoaded", () => {
       showToast(`You can only add up to ${MAX_PRODUCTS} products.`, "error");
       return;
     }
-    if (productList.some((p) => p.name.toLowerCase() === name.toLowerCase()))
-      return;
+    if (productList.some((p) => p.name.toLowerCase() === name.toLowerCase())) return;
+
     productList.push({ id: productSearch.dataset.productId, name });
     productSearch.value = "";
     productSearch.dataset.productId = "";
     updateUI();
   }
+
   addToListBtn.addEventListener("click", addToList);
   productSearch.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
@@ -139,25 +115,27 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Get Deals
+  /* ------------------------------ Get Deals ------------------------------- */
   async function getDeals() {
     try {
       getDealsBtn.disabled = true;
       getDealsBtn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>Finding Deals...`;
-      const resp = await axios.post(`${API_BASE}/deals?start=0`, {
-        products: productList,
-      });
-      displayDealsGrouped(resp.data);
-      // featuredDealsSection.classList.add("hidden");
+
+      const resp = await axios
+        .post(`${API_BASE}/deals?start=0`, { products: productList })
+        .catch((err) => err.response || { data: [] });
+
+      if (!resp?.data?.length) {
+        showToast("No deals found for these products.", "error");
+        return;
+      }
+
+      displayDealsAsCards(resp.data);
       dealsSection.classList.remove("hidden");
-
-      // Adding the recent searches in the section
-      saveRecent();
-
       window.scrollTo({ top: dealsSection.offsetTop, behavior: "smooth" });
     } catch (err) {
-      console.error(err);
-      alert("Failed to fetch deals.");
+      console.error("Error:", err);
+      showToast("Search is currently unavailable", "error");
     } finally {
       getDealsBtn.disabled = false;
       getDealsBtn.innerHTML = `<i class="fas fa-search-dollar mr-2"></i>Get Product(s) Deals`;
@@ -165,464 +143,219 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   document.getElementById("get-deals").addEventListener("click", getDeals);
 
-  // Pagination: Load More
-  dealsContainer.addEventListener("click", async (e) => {
-    const btn = e.target.closest(".btn-load-more");
-    if (!btn) return;
-    const productName = btn.dataset.product;
-    let start = parseInt(btn.dataset.start || "10", 10);
+  /* ------------------------------- Helpers -------------------------------- */
+  const priceNum = (p) => {
+    const n = parseFloat(String(p).replace(/[^0-9.,]/g, "").replace(",", "."));
+    return Number.isFinite(n) ? n : null;
+  };
+  const formatPrice = (p) => (priceNum(p) ? `$${priceNum(p).toFixed(2)}` : "—");
+
+  function unitPrice(deal) {
+    const n = priceNum(deal.price);
+    if (!n) return null;
+    const t = String(deal.title || "");
+    const pack = t.match(/(\d+(?:\.\d+)?)\s*(?:x|\*)\s*(\d+(?:\.\d+)?)\s*(ml|mL|l|L|liters?|litres?)/i);
+    let ml = null;
+    if (pack) {
+      const count = parseFloat(pack[1]);
+      const each = parseFloat(pack[2]);
+      const unit = String(pack[3]).toLowerCase();
+      const eachMl = /l|liters?|litres?/.test(unit) ? each * 1000 : each;
+      ml = count * eachMl;
+    } else {
+      const litre = t.match(/(\d+(?:\.\d+)?)\s*(l|liters?|litres?)/i);
+      if (litre) ml = parseFloat(litre[1]) * 1000;
+      const solo = t.match(/(\d+(?:\.\d+)?)\s*ml\b/i);
+      if (!ml && solo) ml = parseFloat(solo[1]);
+    }
+    if (!ml) return null;
+    const perL = n / (ml / 1000);
+    return `$${perL.toFixed(2)}`;
+  }
+
+  const cheapestOffer = (deals) =>
+    deals.slice().sort((a, b) => (priceNum(a.price) ?? 1e9) - (priceNum(b.price) ?? 1e9))[0];
+
+  const escapeHtml = (str) =>
+    String(str || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+
+  const initials = (name = "") =>
+    name
+      .split(/\s+/)
+      .map((s) => s[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase();
+
+  /* ----------------------------- Display Cards ----------------------------- */
+  function displayDealsAsCards(groups) {
+    dealsContainer.innerHTML = "";
+
+    // Group results by rootName
+    const groupedByRoot = groups.reduce((acc, g) => {
+      const key = g.rootName || g.product?.name || "Results";
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(g);
+      return acc;
+    }, {});
+
+    Object.entries(groupedByRoot).forEach(([rootName, groupList]) => {
+      const heading = document.createElement("h2");
+      heading.className =
+        "text-3xl font-extrabold text-indigo-700 tracking-tight mb-4 border-b border-dashed border-zinc-200 pb-2";
+      heading.textContent = rootName;
+      dealsContainer.appendChild(heading);
+
+      const grid = document.createElement("div");
+      grid.className =
+        "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 content-start";
+
+      groupList.forEach((group) => {
+        const best = cheapestOffer(group.deals);
+        const bestUnit = best ? unitPrice(best) : null;
+
+        const card = document.createElement("div");
+        card.className =
+          "rounded-2xl border shadow-sm bg-white p-4 hover:shadow-md transition-shadow";
+
+        card.innerHTML = `
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              ${
+                best
+                  ? `
+                  <div class="mt-1 flex flex-wrap items-center gap-2">
+                    <span class="text-lg font-bold text-indigo-800">
+                      Cheapest at ${escapeHtml(best.source || "Best store")}
+                    </span>
+            
+                  </div>`
+                  : ""
+              }
+            </div>
+            ${
+              best?.image
+                ? `<img src="${best.image}" alt="${escapeHtml(
+                    best.title || ""
+                  )}" class="h-12 w-12 rounded-xl object-cover ring-1 ring-black/5" />`
+                : ""
+            }
+          </div>
+
+          <div class="mt-4 space-y-2">
+            ${group.deals
+              .map((d) => {
+                const up = unitPrice(d);
+                const isBest =
+                  best &&
+                  String(priceNum(d.price)) === String(priceNum(best.price)) &&
+                  d.source === best.source;
+
+                return `
+                <a href="${d.link}" target="_blank" rel="noreferrer"
+                   class="group block w-full rounded-xl border ${
+                     isBest
+                       ? "border-emerald-400 bg-emerald-50 ring-1 ring-emerald-200"
+                       : "border-zinc-200 bg-white"
+                   } px-3 py-2 hover:shadow-sm transition">
+                  <div class="flex items-center gap-3 min-h-[56px]">
+                    <div class="flex-none h-7 w-7 overflow-hidden rounded-lg ring-1 ring-black/5 bg-white grid place-items-center text-[10px] text-zinc-600">
+                      ${escapeHtml(initials(d.source || "??"))}
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <div class="truncate font-medium text-zinc-900 group-hover:underline max-w-[35ch]">
+                        ${escapeHtml(d.title || d.source || "")}
+                      </div>
+                      <div class="mt-0.5 flex items-center gap-2 text-xs text-zinc-500">
+                        <span class="truncate">${escapeHtml(d.source || "")}</span>
+                        ${
+                          isBest
+                            ? `<span class="inline-flex items-center gap-1 text-emerald-700 font-semibold">
+                                 ✅ BEST
+                               </span>`
+                            : ""
+                        }
+                      </div>
+                    </div>
+                    <div class="flex-none text-right whitespace-nowrap tabular-nums leading-5">
+                      <div class="font-semibold">${formatPrice(d.price)}</div>
+                      ${
+                        up
+                          ? `<div class="text-[11px] text-zinc-500 leading-4">${up}/L</div>`
+                          : ""
+                      }
+                    </div>
+                  </div>
+                </a>`;
+              })
+              .join("")}
+          </div>`;
+
+        grid.appendChild(card);
+      });
+
+      dealsContainer.appendChild(grid);
+    });
+
+    dealsSection.classList.remove("hidden");
+  }
+
+  /* ---------------------- Load last 2 searches globally ---------------------- */
+  async function loadRecentGlobal(limit = 2) {
     try {
-      const resp = await axios.post(`${API_BASE}/deals?start=${start}`, {
-        products: [{ name: productName }],
-      });
-      const html = resp.data[0]?.deals
-        .map(
-          (d) => `
-        <a href="${d.link}" target="_blank" class="border rounded-lg overflow-hidden hover:shadow-lg transition">
-          <img src="${d.image}" class="w-full h-40 object-contain bg-gray-100" />
-          <div class="p-4">
-            <div class="text-indigo-600 font-bold">${d.price}</div>
-            <div class="text-sm text-gray-500">${d.source}</div>
-          </div>
-        </a>
-      `
-        )
-        .join("");
-      // insert before button
-      btn.insertAdjacentHTML(
-        "beforebegin",
-        `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">${html}</div>`
-      );
-      btn.dataset.start = start + (resp.data[0]?.deals.length || 0);
-      if ((resp.data[0]?.deals.length || 0) < 10) btn.remove();
-    } catch {
-      alert("Failed to load more");
-    }
-  });
+      const { data } = await axios.get(`${API_BASE}/deals/recent?limit=${limit}`);
+      if (!Array.isArray(data) || data.length === 0) return;
 
-  // Recent searches & clear
-  function loadRecent() {
-    const arr = JSON.parse(localStorage.getItem("recentSearches") || "[]");
-    const secRecent = document.getElementById("sec-recent-searches");
+      const recentWrap = document.createElement("div");
+      recentWrap.className = "space-y-10 mt-6";
 
-    if (!arr || arr.length === 0) {
-      secRecent.classList.add("hidden");
-      return;
-    }
+      data.slice(0, limit).forEach((item, i) => {
+        const title =
+          item.title ||
+          (Array.isArray(item.products) && item.products.length
+            ? item.products.map((p) => p.name).join(", ")
+            : `Recent #${i + 1}`);
+        const header = document.createElement("div");
+        header.className = "border-b border-dashed border-zinc-200 pb-1";
+        header.innerHTML = `<h2 class="text-2xl font-extrabold text-indigo-700 tracking-tight">Recent: ${escapeHtml(
+          title
+        )}</h2>`;
+        recentWrap.appendChild(header);
 
-    const html = arr
-      .map(
-        (p, i) => `
-      <div class="p-3 border rounded relative">
-        <button data-index="${i}" class="absolute top-2 right-2 text-gray-400 hover:text-red-500">
-          <i class="fas fa-times-circle"></i>
-        </button>
-        <div class="font-medium mb-2">${p.name}</div>
-        <button data-name="${p.name}" class="bg-indigo-100 text-indigo-700 px-2 py-1 rounded text-xs find-deals">
-          Find Deals
-        </button>
-      </div>
-    `
-      )
-      .join("");
-
-    document.getElementById("recent-searches").innerHTML = html;
-    secRecent.classList.remove("hidden");
-  }
-
-  clearHistory.addEventListener("click", () => {
-    localStorage.removeItem("recentSearches");
-    loadRecent();
-  });
-
-  recentEl.addEventListener("click", (e) => {
-    if (e.target.matches("[data-index]")) {
-      const idx = +e.target.dataset.index;
-      const arr = JSON.parse(localStorage.getItem("recentSearches") || "[]");
-      arr.splice(idx, 1);
-      localStorage.setItem("recentSearches", JSON.stringify(arr));
-      loadRecent();
-    }
-    if (e.target.matches(".find-deals")) {
-      const name = e.target.dataset.name;
-      productSearch.value = name;
-      addToList();
-    }
-  });
-
-  // Save in recent after a successful search
-  function saveRecent() {
-    let arr = JSON.parse(localStorage.getItem("recentSearches") || "[]");
-    productList.forEach((p) => {
-      if (!arr.some((x) => x.name === p.name)) arr.unshift(p);
-    });
-    arr = arr.slice(0, 10);
-    localStorage.setItem("recentSearches", JSON.stringify(arr));
-    loadRecent();
-  }
-
-  // Extracted utility functions for display logic
-  function normalizeTitleQuantity(title) {
-    const match = title.match(
-      /(\d+(\.\d+)?)(\s*)(ml|l|g|kg|pieces|pcs|dozen|each)/i
-    );
-    if (!match) {
-      if (/each/i.test(title)) return { qty: 1, unit: "piece" };
-      return { qty: "unknown", unit: "unit" };
-    }
-
-    let qty = parseFloat(match[1]);
-    let unit = match[4].toLowerCase();
-
-    if (unit === "ml") {
-      qty = qty / 1000;
-      unit = "L";
-    } else if (unit === "g") {
-      qty = qty / 1000;
-      unit = "kg";
-    } else if (unit === "pcs" || unit === "piece") {
-      unit = "pieces";
-    } else if (unit === "dozen") {
-      qty = qty * 12;
-      unit = "pieces";
-    }
-
-    return { qty: qty.toFixed(2), unit };
-  }
-
-  function extractNormalizedName(title) {
-    return title
-      .replace(/(Coles|Woolworths|Amazon|Fresh|Organic|Supermarkets)/gi, "")
-      .trim()
-      .split(" ")
-      .slice(0, 3)
-      .join(" ");
-  }
-
-  function groupByNormalizedTitle(deals) {
-    const map = {};
-    deals.forEach((deal) => {
-      const { qty, unit } = normalizeTitleQuantity(deal.title);
-      const name = extractNormalizedName(deal.title);
-      const key = `${name} – ${qty} ${unit}`;
-      if (!map[key]) map[key] = [];
-      map[key].push(deal);
-    });
-    return map;
-  }
-
-  function findBestValues(deals) {
-    const minPrice = Math.min(
-      ...deals.map((d) => parseFloat(d.price.replace(/[^0-9.]/g, "")))
-    );
-
-    return deals.filter(
-      (d) => parseFloat(d.price.replace(/[^0-9.]/g, "")) === minPrice
-    );
-  }
-
-  // Replacement displayDeals used in getDeals
-  function displayDealsGrouped(dealsData) {
-    const dealsContainer = document.getElementById("deals-container");
-    dealsContainer.innerHTML = "";
-    let isFirst = true;
-
-    const wrapper = document.createElement("div");
-    wrapper.className = "space-y-6";
-
-    dealsData.forEach((productData) => {
-      const grouped = groupByNormalizedTitle(productData.deals);
-
-      if (!isFirst) {
-        const productHeader = document.createElement("div");
-        productHeader.className =
-          "border-b-2 border-dashed border-gray-300 my-6 pb-4";
-
-        productHeader.innerHTML = `
-  <h3 class="text-xl font-bold text-gray-800 mb-2">
-    Search: <span class="text-indigo-600">${productData.product.name}</span>
-  </h3>
-`;
-
-        wrapper.appendChild(productHeader);
-      }
-      isFirst = false;
-
-      Object.entries(grouped).forEach(([groupKey, deals]) => {
         const section = document.createElement("div");
-        section.className =
-          "product-deals border rounded shadow-sm bg-white p-4";
-
-        section.setAttribute(
-          "data-product",
-          productData.product.name.toLowerCase()
-        );
-
-        const best = findBestValues(deals);
-
-        if (deals.length > 1) {
-          section.innerHTML = `
-          <h4 class="text-lg font-semibold mb-2">${groupKey}</h4>
-              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-
-
-            ${deals
-              .map(
-                (deal) => `
-              <div class="border rounded-lg p-3 flex gap-4 items-center ${
-                deal === best
-                  ? "border-green-500 bg-green-50"
-                  : "border-gray-200"
-              }">
-                <div class="w-24 h-24 bg-white flex items-center justify-center border rounded">
-                  <img src="${deal.image || "./assets/placeholder.png"}" alt="${
-                  deal.title
-                }" class="max-h-full max-w-full object-contain">
-                </div>
-                <div class="flex-1">
-                  <div class="font-semibold">${deal.source}</div>
-                  <div class="text-sm text-gray-500">${deal.title}</div>
-                  ${
-                    deals.includes(deal)
-                      ? '<div class="text-xs font-bold text-green-600 mt-1">✅ BEST VALUE</div>'
-                      : ""
-                  }
-                  <div class="mt-2 flex justify-between items-center">
-                    <div class="text-indigo-600 font-bold">${deal.price}</div>
-                    <button class="bg-indigo-600 text-white text-sm px-3 py-1 rounded add-to-cart-btn" data-deal='${JSON.stringify(
-                      deal
-                    )}'>Add to Comparison</button>
-                  </div>
-                </div>
-              </div>
-            `
-              )
-              .join("")}
-          </div>
-        `;
-        } else {
-          const deal = deals[0];
-          section.innerHTML = `
-          <h4 class="text-lg font-semibold mb-2">${groupKey}</h4>
-          <div class="flex gap-4 border p-4 rounded bg-yellow-50 border-yellow-300 items-center">
-            <div class="w-24 h-24 bg-white flex items-center justify-center rounded border">
-              <img src="${deal.image || "./assets/placeholder.png"}" alt="${
-            deal.title
-          }" class="max-h-full max-w-full object-contain">
-            </div>
-            <div class="flex-1">
-              <div class="font-medium text-gray-800">${deal.source}</div>
-              <div class="text-sm text-gray-600">${deal.title}</div>
-              <div class="text-xs text-yellow-700 mt-1">No other sources available for comparison.</div>
-              <div class="mt-2 flex justify-between items-center">
-                <div class="font-bold text-indigo-600 text-lg">${
-                  deal.price
-                }</div>
-                <button class="bg-indigo-600 text-white px-3 py-1 rounded add-to-cart-btn" data-deal='${JSON.stringify(
-                  deal
-                )}'>Add to Comparison</button>
-              </div>
-            </div>
-          </div>
-        `;
-        }
-
-        wrapper.appendChild(section);
+        const groups = item.results || item.groups || [];
+        if (groups.length) displayDealsAsCards(groups, section);
+        recentWrap.appendChild(section);
       });
-    });
 
-    dealsContainer.appendChild(wrapper);
-    document.getElementById("deals-results").classList.remove("hidden");
-  }
-
-  /** --- GROUPING AND BEST VALUE LOGIC --- **/
-
-  function normalizeTitleQuantity(title) {
-    const match = title.match(
-      /(\d+(\.\d+)?)(\s*)(ml|l|g|kg|pieces|pcs|dozen|each)/i
-    );
-    if (!match) {
-      if (/each/i.test(title)) return { qty: 1, unit: "piece" };
-      return { qty: "unknown", unit: "unit" };
+      dealsContainer.prepend(recentWrap);
+      dealsSection.classList.remove("hidden");
+    } catch (err) {
+      console.warn("Recent load failed:", err.message);
     }
-
-    let qty = parseFloat(match[1]);
-    let unit = match[4].toLowerCase();
-
-    if (unit === "ml") {
-      qty = qty / 1000;
-      unit = "L";
-    } else if (unit === "g") {
-      qty = qty / 1000;
-      unit = "kg";
-    } else if (unit === "pcs" || unit === "piece") {
-      unit = "pieces";
-    } else if (unit === "dozen") {
-      qty = qty * 12;
-      unit = "pieces";
-    }
-
-    return { qty: qty.toFixed(2), unit };
   }
 
-  function extractNormalizedName(title) {
-    return title
-      .replace(/(Coles|Woolworths|Amazon|Fresh|Organic|Supermarkets)/gi, "")
-      .trim()
-      .split(" ")
-      .slice(0, 3)
-      .join(" ");
-  }
-
-  function groupByNormalizedTitle(deals) {
-    const map = {};
-    deals.forEach((deal) => {
-      const { qty, unit } = normalizeTitleQuantity(deal.title);
-      const name = extractNormalizedName(deal.title);
-      const key = `${name} – ${qty} ${unit}`;
-      if (!map[key]) map[key] = [];
-      map[key].push(deal);
-    });
-    return map;
-  }
-
-  function findBestValue(deals) {
-    return deals.reduce(
-      (a, b) =>
-        parseFloat(a.price.replace(/[^0-9.]/g, "")) <
-        parseFloat(b.price.replace(/[^0-9.]/g, ""))
-          ? a
-          : b,
-      deals[0]
-    );
-  }
-
-  function displayDealsGrouped(dealsData) {
-    const dealsContainer = document.getElementById("deals-container");
-    dealsContainer.innerHTML = "";
-
-    const wrapper = document.createElement("div");
-    wrapper.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6";
-
-    dealsData.forEach((productData) => {
-      const grouped = groupByNormalizedTitle(productData.deals);
-
-      Object.entries(grouped).forEach(([groupKey, deals]) => {
-        const section = document.createElement("div");
-        section.className =
-          "product-deals p-4 border rounded shadow-sm bg-white";
-        section.setAttribute(
-          "data-product",
-          productData.product.name.toLowerCase()
-        );
-
-        const best = findBestValue(deals);
-
-        if (deals.length > 1) {
-          section.innerHTML = `
-          <h4 class="text-lg font-semibold mb-2">${groupKey}</h4>
-          <div class="space-y-4">
-            ${deals
-              .map(
-                (deal) => `
-              <div class="border rounded-lg p-3 flex gap-4 items-center ${
-                deal === best
-                  ? "border-green-500 bg-green-50"
-                  : "border-gray-200"
-              }">
-                <div class="w-24 h-24 bg-white flex items-center justify-center border rounded">
-                  <img src="${deal.image || "./assets/placeholder.png"}" alt="${
-                  deal.title
-                }" class="max-h-full max-w-full object-contain">
-                </div>
-                <div class="flex-1">
-                  <div class="font-semibold">${deal.source}</div>
-                  <div class="text-sm text-gray-500">${deal.title}</div>
-                  ${
-                    deal === best
-                      ? '<div class="text-xs font-bold text-green-600 mt-1">✅ BEST VALUE</div>'
-                      : ""
-                  }
-                  <div class="mt-2 flex justify-between items-center">
-                    <div class="text-indigo-600 font-bold">${deal.price}</div>
-                    <button class="bg-indigo-600 text-white text-sm px-3 py-1 rounded add-to-cart-btn" data-deal='${JSON.stringify(
-                      deal
-                    )}'>Add to Comparison</button>
-                  </div>
-                </div>
-              </div>
-            `
-              )
-              .join("")}
-          </div>
-        `;
-        } else {
-          const deal = deals[0];
-          section.innerHTML = `
-          <h4 class="text-lg font-semibold mb-2">${groupKey}</h4>
-          <div class="flex gap-4 border p-4 rounded bg-yellow-50 border-yellow-300 items-center">
-            <div class="w-24 h-24 bg-white flex items-center justify-center rounded border">
-              <img src="${deal.image || "./assets/placeholder.png"}" alt="${
-            deal.title
-          }" class="max-h-full max-w-full object-contain">
-            </div>
-            <div class="flex-1">
-              <div class="font-medium text-gray-800">${deal.source}</div>
-              <div class="text-sm text-gray-600">${deal.title}</div>
-              <div class="text-xs text-yellow-700 mt-1">No other sources available for comparison.</div>
-              <div class="mt-2 flex justify-between items-center">
-                <div class="font-bold text-indigo-600 text-lg">${
-                  deal.price
-                }</div>
-                <button class="bg-indigo-600 text-white px-3 py-1 rounded add-to-cart-btn" data-deal='${JSON.stringify(
-                  deal
-                )}'>Add to Comparison</button>
-              </div>
-            </div>
-          </div>
-        `;
-        }
-
-        wrapper.appendChild(section);
-      });
-    });
-
-    dealsContainer.appendChild(wrapper);
-    document.getElementById("deals-results").classList.remove("hidden");
-  }
-
-  // Initialize full UI
-  updateUI();
-  loadRecent();
-  // loadFeaturedDeals();
-
-  // Move to top
-  window.addEventListener("scroll", () => {
-    moveTop.classList.toggle("hidden", window.scrollY < 300);
-  });
-
-  moveTop.addEventListener("click", () =>
-    window.scrollTo({ top: 0, behavior: "smooth" })
-  );
-
+  /* ------------------------------ Toast + Scroll ----------------------------- */
   function showToast(message, type = "error") {
     const toast = document.getElementById("toast");
     toast.textContent = message;
-
-    toast.className =
-      "fixed top-5 right-5 z-50 px-4 py-3 rounded shadow-lg transition-opacity duration-300";
-
-    if (type === "error") {
-      toast.classList.add("bg-red-100", "border-red-400", "text-red-800");
-    } else if (type === "success") {
-      toast.classList.add("bg-green-100", "border-green-400", "text-green-800");
-    } else {
-      toast.classList.add("bg-gray-100", "border-gray-400", "text-gray-800");
-    }
-
+    toast.className = `fixed top-5 right-5 z-50 px-4 py-3 rounded shadow-lg ${
+      type === "error"
+        ? "bg-red-100 border-red-400 text-red-800"
+        : "bg-green-100 border-green-400 text-green-800"
+    }`;
     toast.classList.remove("hidden");
-    setTimeout(() => {
-      toast.classList.add("hidden");
-    }, 3000);
+    setTimeout(() => toast.classList.add("hidden"), 3000);
   }
+
+  updateUI();
+  loadRecentGlobal(2);
+  window.addEventListener("scroll", () =>
+    moveTop.classList.toggle("hidden", window.scrollY < 300)
+  );
+  moveTop.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
 });
